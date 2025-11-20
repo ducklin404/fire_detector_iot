@@ -28,8 +28,8 @@ const float TEMP_RANGE = 0.5f;
 const float HUMID_RANGE = 2.0f;    
 
 
-// optional: minimum time between sends (ms)
-const unsigned long MIN_SEND_INTERVAL = 5000UL;
+// minimum time between sends (ms)
+const unsigned long MIN_SEND_INTERVAL = 1000UL;
 
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 

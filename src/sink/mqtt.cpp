@@ -22,6 +22,17 @@ static bool isSeen(const String &n)
             return true;
     return false;
 }
+
+static void requestSharedAttributes(const String &requestId)
+{
+    // list the shared attribute keys you want from ThingsBoard
+    String payload = "{\"sharedKeys\":\"auto_fan,fan_on,auto_alarm,alarm_on,gas_threshold,humid_threshold\"}";
+    String topic = "v1/devices/me/attributes/request/" + requestId;
+    mqtt.publish(topic.c_str(), payload.c_str());
+    Serial.printf("[MQTT] Requested shared attributes id=%s -> %s\n", requestId.c_str(), payload.c_str());
+}
+
+
 static void markSeen(const String &n)
 {
     if (seenCount < MAX_DEVICES)
@@ -50,6 +61,73 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
 
     String requestId = extractJsonRawValue(msg, "id");
     requestId.trim();
+
+
+    if (topicStr.startsWith("v1/devices/me/attributes/response"))
+    {
+        // msg is a JSON object with keys -> values, e.g. {"auto_fan":true,"gas_threshold":400}
+        // Very simple ad-hoc parser: we will find top-level keys and values and pass to rpcHandler
+        msg.trim();
+        int pos = 0;
+        int len = msg.length();
+        while (pos < len)
+        {
+            int q1 = msg.indexOf('\"', pos);
+            if (q1 < 0) break;
+            int q2 = msg.indexOf('\"', q1 + 1);
+            if (q2 < 0) break;
+            String key = msg.substring(q1 + 1, q2);
+            pos = q2 + 1;
+
+            int colon = msg.indexOf(':', pos);
+            if (colon < 0) break;
+            pos = colon + 1;
+            while (pos < len && isspace(msg.charAt(pos))) pos++;
+
+            // read value (quoted string or until comma/brace)
+            String value;
+            char c = msg.charAt(pos);
+            if (c == '\"')
+            {
+                int vq = msg.indexOf('\"', pos + 1);
+                if (vq < 0) vq = len - 1;
+                value = msg.substring(pos + 1, vq); // strip quotes
+                pos = vq + 1;
+            }
+            else
+            {
+                int comma = msg.indexOf(',', pos);
+                int brace = msg.indexOf('}', pos);
+                int endPos = -1;
+                if (comma < 0 && brace < 0) endPos = len;
+                else if (comma < 0) endPos = brace;
+                else if (brace < 0) endPos = comma;
+                else endPos = min(comma, brace);
+                if (endPos < 0) endPos = len;
+                value = msg.substring(pos, endPos);
+                value.trim();
+                pos = endPos;
+            }
+
+            // Now we have key and value as strings. Use your rpcHandler to apply them.
+            if (rpcHandler)
+            {
+                rpcHandler(key, value);
+                Serial.printf("[MQTT] Applied attribute %s=%s\n", key.c_str(), value.c_str());
+            }
+
+            // Move past comma if present
+            int nextComma = msg.indexOf(',', pos);
+            int nextBrace = msg.indexOf('}', pos);
+            if (nextComma >= 0 && (nextComma < nextBrace || nextBrace < 0))
+                pos = nextComma + 1;
+            else
+                break;
+        }
+
+        return;
+    }
+
     if (topicStr == "v1/devices/me/attributes")
     {
         msg.trim();
@@ -171,6 +249,8 @@ void mqttEnsureConnected()
         mqtt.subscribe("v1/devices/me/attributes");
         mqtt.subscribe("v1/devices/me/attributes/response");
         Serial.println("[MQTT] Subscribed to RPC topic");
+
+        requestSharedAttributes("1");
     }
     else
     {
