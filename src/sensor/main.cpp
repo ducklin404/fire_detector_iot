@@ -31,7 +31,7 @@ const float HUMID_RANGE = 2.0f;
 // optional: minimum time between sends (ms)
 const unsigned long MIN_SEND_INTERVAL = 5000UL;
 
-uint8_t broadcastAddress[] = {0x1C, 0x69, 0x20, 0xB8, 0xC7, 0x44};
+uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 // Force both sender and gateway to same channel
 #define ESPNOW_CHANNEL 6
@@ -60,6 +60,8 @@ float lastSentGas = NAN;
 float lastSentFlame = NAN;
 float lastSentTemp = NAN;
 float lastSentHumid = NAN;
+
+
 
 void setup() {
   Serial.begin(115200);
