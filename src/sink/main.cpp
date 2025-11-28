@@ -9,12 +9,13 @@
 #include "fan_control.h"
 #include "mqtt.h"
 
+
 // constants from former global config
-const char *WIFI_SSID = "duck";
-const char *WIFI_PASS = "ducklin404";
+const char *WIFI_SSID = "Ace 5 Pro";
+const char *WIFI_PASS = "hupk4928";
 const char *THINGSBOARD_SERVER = "eu.thingsboard.cloud";
 const uint16_t THINGSBOARD_PORT = 1883;
-const char *THINGSBOARD_GATEWAY_TOKEN = "99DwCp0arbYhzG7pHere";
+const char *THINGSBOARD_GATEWAY_TOKEN = "lr5g7fevivn9gp2dlhwx";
 
 static bool auto_fan = false;   // if true, fan is controlled automatically
 static bool auto_alarm = false; // if true, alarm is controlled automatically (auto_mode now only affects alarm)
@@ -325,6 +326,14 @@ void setup()
 
   WiFi.mode(WIFI_STA);
   esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+
+  Serial.print("STA MAC: ");
+  Serial.println(WiFi.macAddress());   
+
+  uint8_t mac[6];
+  esp_wifi_get_mac(WIFI_IF_STA, mac);
+  Serial.printf("STA MAC bytes: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   espnowInit(onSensorData);
 
   // start WiFi (for MQTT); allow ESP-NOW to operate without WiFi connected
@@ -337,8 +346,10 @@ void setup()
     delay(200);
     tries++;
   }
-  if (WiFi.status() == WL_CONNECTED)
+  if (WiFi.status() == WL_CONNECTED){
     Serial.println("\n[WiFi] Connected");
+      Serial.printf("[WiFi] Connected channel: %d\n", WiFi.channel());
+  }
   else
     Serial.println("\n[WiFi] Failed (ESP-NOW still works)");
 

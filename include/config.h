@@ -11,9 +11,9 @@ extern const char* THINGSBOARD_GATEWAY_TOKEN;
 
 // Pins & activation logic
 #define FAN_PIN 32
-#define FAN_ACTIVE_HIGH false
+#define FAN_ACTIVE_HIGH true
 #define ALERT_PIN 33
-#define ALERT_ACTIVE_HIGH false
+#define ALERT_ACTIVE_HIGH true
 
 
 

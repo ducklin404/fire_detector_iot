@@ -15,10 +15,10 @@ float tempEMA = NAN;
 float humidEMA = NAN;
 
 // EMA alpha
-const float gasAlpha = 0.30f;
-const float flameAlpha = 0.25f;
-const float tempAlpha = 0.15f;
-const float humidAlpha = 0.20f;
+const float gasAlpha = 0.50f;
+const float flameAlpha = 0.7f;
+const float tempAlpha = 0.35f;
+const float humidAlpha = 0.35f;
 
 // --- Range thresholds (ABSOLUTE) ---
 // Node will send when EMA value is outside lastSent +/- RANGE
@@ -30,8 +30,10 @@ const float HUMID_RANGE = 2.0f;
 
 // minimum time between sends (ms)
 const unsigned long MIN_SEND_INTERVAL = 1000UL;
+const unsigned long MAX_SEND_INTERVAL = 1500UL;
 
-uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+uint8_t receiverAddress[] = {0x44, 0x1D, 0x64, 0xF3, 0xE4, 0xE0};
+
 
 // Force both sender and gateway to same channel
 #define ESPNOW_CHANNEL 6
@@ -46,15 +48,20 @@ typedef struct struct_message {
 
 struct_message myData;
 
+unsigned long lastSendTime = 0;
+
+
 #define DHTTYPE DHT11
 DHT dht(DHT_PIN, DHTTYPE);
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+  if (status != ESP_NOW_SEND_SUCCESS){
+    lastSendTime = 0;
+  }
 }
 
-unsigned long lastSendTime = 0;
 // last values we actually transmitted
 float lastSentGas = NAN;
 float lastSentFlame = NAN;
@@ -85,7 +92,7 @@ void setup() {
 
   esp_now_peer_info_t peerInfo;
   memset(&peerInfo, 0, sizeof(peerInfo));
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  memcpy(peerInfo.peer_addr, receiverAddress, 6);
   peerInfo.channel = ESPNOW_CHANNEL;
   peerInfo.encrypt = false;
 
@@ -93,7 +100,7 @@ void setup() {
     Serial.print("Added peer: ");
     for (int i = 0; i < 6; i++) {
       if (i) Serial.print(":");
-      Serial.print(broadcastAddress[i], HEX);
+      Serial.print(receiverAddress[i], HEX);
     }
     Serial.println();
   } else {
@@ -183,6 +190,9 @@ void loop() {
   if ((now - lastSendTime) < MIN_SEND_INTERVAL) {
     shouldSend = false;
   }
+  if ((now - lastSendTime) > MAX_SEND_INTERVAL) {
+    shouldSend = true;
+  }
 
   if (shouldSend) {
     myData.id = DEVICE_ID;
@@ -197,7 +207,7 @@ void loop() {
                   myData.gasAnalog, myData.flameAnalog, myData.temperature, myData.humidity);
     Serial.println("-----------------------");
 
-    esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)&myData, sizeof(myData));
+    esp_err_t result = esp_now_send(receiverAddress, (uint8_t *)&myData, sizeof(myData));
     if (result == ESP_OK) {
       Serial.println("esp_now_send(): OK");
       // update last sent values and time only on success
@@ -221,5 +231,5 @@ void loop() {
   }
 
   // sensor read period
-  delay(2000);
+  delay(500);
 }
